@@ -1,4 +1,6 @@
-# Member 3 - Anomaly Detection Module
+# SentinelAI - Surveillance Anomaly Detection System
+**Member 3: Anomaly Detection Module**
+
 ## Autoencoder + CNN-LSTM for Suspicious Activity Detection
 
 ### Overview
