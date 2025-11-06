@@ -20,6 +20,11 @@ wheels/
 .installed.cfg
 *.egg
 
+# PyTorch
+*.pth
+*.pt
+*.ckpt
+
 # Jupyter Notebook
 .ipynb_checkpoints
 
@@ -31,10 +36,36 @@ venv/
 ENV/
 .conda/
 
-# VS Code
+# IDE
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
 *.code-workspace
 
-# Operating System
+# OS
 .DS_Store
 Thumbs.db
+
+# Data
+data/videos/*.mp4
+data/videos/*.avi
+data/videos/*.mov
+*.mp4
+*.avi
+*.mov
+
+# Logs
+logs/*.log
+logs/*.png
+logs/*.jpg
+
+# Weights (large model files)
+weights/*.pth
+weights/*.pt
+!weights/.gitkeep
+
+# Temporary files
+*.tmp
+*.bak
