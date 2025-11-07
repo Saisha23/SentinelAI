@@ -58,6 +58,38 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 - Anomaly detection in `app/services/detection_service.py`
 - Integration point in `_check_anomalies` method
 
+## Tracking & Zone Management (Member 2)
+
+This backend already includes a lightweight IoU-based tracker and a polygonal zone manager as a starter implementation. Member 2 should review or replace these with DeepSort or another robust tracker as needed.
+
+Files:
+- `app/services/tracker.py` — simple IoU tracker that assigns persistent IDs and stores centroid history.
+- `app/services/zone_manager.py` — polygon-based zone manager. Use `add_zone(id,name,polygon)` to register restricted areas.
+
+Example: configure zones and process a frame (backend-side example):
+
+```python
+from app.services.detection_service import DetectionService
+
+ds = DetectionService()
+
+# Add or modify zones at runtime (ZoneManager is available at ds.zone_manager)
+ds.zone_manager.add_zone('zone_entrance', 'Main Entrance', [(100,100),(400,100),(400,400),(100,400)])
+
+# If you already have YOLO detections, pass them directly to process_frame to get tracks and zone info
+sample_detections = [
+    {"bbox": (120, 130, 50, 100), "class": "person", "confidence": 0.92},
+]
+
+result = await ds.process_frame("", detections=sample_detections)  # returns dict with 'tracks' and 'anomalies'
+print(result)
+```
+
+Notes:
+- Zone violations are detected by testing the centroid of a bbox against registered polygons; violations enqueue a `zone_violation` alert into the backend alert queue.
+- To replace the simple tracker with DeepSort: implement a wrapper that exposes the same `update(detections)` -> list of tracks interface and swap it into `DetectionService.tracker`.
+
+
 ### Security Considerations
 
 - CORS is currently set to allow all origins (`*`). In production, specify allowed origins.
