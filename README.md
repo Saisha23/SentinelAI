@@ -58,51 +58,67 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 - Anomaly detection in `app/services/detection_service.py`
 - Integration point in `_check_anomalies` method
 
-## Tracking & Zone Management (Member 2)
+🧠 Tracking & Zone Management (Member 2)
 
-This backend already includes a lightweight IoU-based tracker and a polygonal zone manager as a starter implementation. Member 2 should review or replace these with DeepSort or another robust tracker as needed.
+This backend includes a lightweight IoU-based tracker and a polygonal zone manager as starter implementations.
+Member 2 is responsible for reviewing or replacing these with DeepSort or another robust tracker if needed.
 
-Files:
-- `app/services/tracker.py` — simple IoU tracker that assigns persistent IDs and stores centroid history.
-- `app/services/zone_manager.py` — polygon-based zone manager. Use `add_zone(id,name,polygon)` to register restricted areas.
-
-Example: configure zones and process a frame (backend-side example):
-
-```python
+📁 Files Overview
+File	Description
+app/services/tracker.py	Implements a simple IoU tracker that assigns persistent IDs and stores centroid history.
+app/services/zone_manager.py	Provides polygon-based zone management. Use add_zone(id, name, polygon) to register restricted areas.
+⚙️ Example Usage
 from app.services.detection_service import DetectionService
 
 ds = DetectionService()
 
-# Add or modify zones at runtime (ZoneManager is available at ds.zone_manager)
-ds.zone_manager.add_zone('zone_entrance', 'Main Entrance', [(100,100),(400,100),(400,400),(100,400)])
+# Add or modify zones at runtime
+ds.zone_manager.add_zone(
+    'zone_entrance',
+    'Main Entrance',
+    [(100, 100), (400, 100), (400, 400), (100, 400)]
+)
 
-# If you already have YOLO detections, pass them directly to process_frame to get tracks and zone info
+# Pass YOLO detections directly to process_frame
 sample_detections = [
     {"bbox": (120, 130, 50, 100), "class": "person", "confidence": 0.92},
 ]
 
-result = await ds.process_frame("", detections=sample_detections)  # returns dict with 'tracks' and 'anomalies'
-print(result)
-```
+result = await ds.process_frame("", detections=sample_detections)
+print(result)  # returns a dict with 'tracks' and 'anomalies'
 
-Notes:
-- Zone violations are detected by testing the centroid of a bbox against registered polygons; violations enqueue a `zone_violation` alert into the backend alert queue.
-- To replace the simple tracker with DeepSort: implement a wrapper that exposes the same `update(detections)` -> list of tracks interface and swap it into `DetectionService.tracker`.
+🧩 Notes
+
+Zone violations are detected by checking if a bounding box centroid lies inside any registered polygon.
+
+Detected violations enqueue a zone_violation alert into the backend alert queue.
+
+To replace the default IoU tracker with DeepSort, implement a wrapper exposing the same interface:
+
+update(detections) -> list of tracks
 
 
-### Security Considerations
+Then integrate it into DetectionService.tracker.
 
-- CORS is currently set to allow all origins (`*`). In production, specify allowed origins.
-- Implement authentication for WebSocket connections
-- Use SSL/TLS in production
-- Implement rate limiting
+🔒 Security Considerations
 
-### Performance Optimization
+CORS currently allows all origins (*); restrict it in production.
 
-- Frame processing is done asynchronously
-- Implement frame dropping if processing falls behind
-- Use GPU acceleration where available
-- Optimize model inference times
+Implement authentication for WebSocket connections.
+
+Use SSL/TLS for all production deployments.
+
+Add rate limiting to protect against abuse.
+
+⚡ Performance Optimization
+
+Frame processing is asynchronous.
+
+Implement frame dropping when processing falls behind.
+
+Utilize GPU acceleration where available.
+
+Optimize model inference for faster performance.
 
 ## Anomaly Detection Module (Member 3)
 
