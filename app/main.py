@@ -1,11 +1,11 @@
 # app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import zones, training_ws  # ⬅️ import your new WebSocket router
+from app.api import zones, metrics
 
 app = FastAPI(title="SentinelAI Backend")
 
-# Allow Streamlit, React, or other frontends to connect
+# Allow Streamlit or other frontends to connect
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,9 +16,7 @@ app.add_middleware(
 
 # Include your API routes
 app.include_router(zones.router, prefix="/api/zones", tags=["Zones"])
-
-# Include your WebSocket training metrics route
-app.include_router(training_ws.router, tags=["Training Metrics"])  # ⬅️ add this
+app.include_router(metrics.router, prefix="/api", tags=["Metrics"])
 
 @app.get("/")
 def root():
