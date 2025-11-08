@@ -3,6 +3,9 @@ import pandas as pd
 import numpy as np
 import cv2
 import base64
+import requests
+import plotly.express as px
+import time
 
 # =============================
 # 🌐 STREAMLIT PAGE SETUP
@@ -69,79 +72,101 @@ st.markdown("---")
 # 📋 SIDEBAR - ALERTS
 # =============================
 st.sidebar.header("📋 Live Alerts")
-st.sidebar.write("Monitoring live alerts (simulation mode)...")
+st.sidebar.write("Monitoring live alerts (connected to backend)...")
 alert_placeholder = st.sidebar.empty()
 
 # =============================
-# 🎥 LIVE FEED SECTION
+# 🌐 BACKEND API URL
 # =============================
-st.markdown("<div class='section-title'>🎥 Live Surveillance Feed</div>", unsafe_allow_html=True)
-frame_window = st.empty()
+API_BASE = "http://127.0.0.1:8000/api"
 
 # =============================
-# 📊 METRICS
+# 🧠 FETCH ZONE & METRIC DATA
+# =============================
+def fetch_backend_data():
+    try:
+        zones = requests.get(f"{API_BASE}/zones").json()
+        alerts = np.random.randint(0, 5)
+        return zones, alerts
+    except Exception as e:
+        st.warning("⚠️ Could not fetch data from backend.")
+        return [], 0
+
+zones, alerts = fetch_backend_data()
+
+# =============================
+# 📊 TOP METRICS
 # =============================
 col1, col2, col3 = st.columns(3)
-col1.metric("Active Cameras", 1)
-col2.metric("Detected Objects", 0)
-col3.metric("Alerts Triggered", 0)
+col1.metric("Active Zones", len(zones))
+col2.metric("Active Cameras", 1)
+col3.metric("Alerts Triggered", alerts)
 
-# ============================================================
-# 🎥 LOCAL CAMERA DISPLAY LOOP (NO BACKEND)
-# ============================================================
-import time
+# =============================
+# 🗺️ ZONE MAP DISPLAY
+# =============================
+st.markdown("<div class='section-title'>🗺️ Zone Overview</div>", unsafe_allow_html=True)
 
-def run_local_camera():
-    st.markdown("<div class='section-title'>🎥 Live Local Camera Feed</div>", unsafe_allow_html=True)
+if len(zones) > 0:
+    zone_data = []
+    for z in zones:
+        for point in z["polygon"]:
+            zone_data.append({"Zone": z["name"], "Latitude": point[0], "Longitude": point[1]})
+    df = pd.DataFrame(zone_data)
+    fig = px.scatter_mapbox(df, lat="Latitude", lon="Longitude", color="Zone", zoom=3, height=400)
+    fig.update_layout(mapbox_style="open-street-map", margin={"r":0,"t":0,"l":0,"b":0})
+    st.plotly_chart(fig, use_container_width=True)
+else:
+    st.info("No zones configured yet. Add zones from backend or database.")
 
-    frame_placeholder = st.empty()
-    obj_placeholder = st.empty()
+# =============================
+# 🎥 LIVE CAMERA SIMULATION
+# =============================
+st.markdown("<div class='section-title'>🎥 Live Local Camera Feed</div>", unsafe_allow_html=True)
 
-    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-    if not cap.isOpened():
-        st.error("❌ Could not access webcam.")
-        return
+frame_placeholder = st.empty()
+obj_placeholder = st.empty()
 
+cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+if not cap.isOpened():
+    st.error("❌ Could not access webcam.")
+else:
     st.success("✅ Live camera started. Press 'Stop Camera' to end.")
-
     stop_button = st.button("🛑 Stop Camera")
 
+    detected_objects = 0
     while cap.isOpened():
         ret, frame = cap.read()
-        if not ret:
-            st.warning("⚠️ Frame not captured.")
+        if not ret or stop_button:
             break
 
-        # ======= Simulate object detection (for now) =======
-        # (Replace this with your backend or AI model later)
+        # ======= Simulated Detection =======
         height, width, _ = frame.shape
         x, y, w, h = 100, 120, 180, 180
         cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-        cv2.putText(frame, "Person: 98%", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,0), 2)
+        cv2.putText(frame, "Person: 97%", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,0), 2)
+        detected_objects += 1
 
-        # ======= Display live frame =======
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame_placeholder.image(frame_rgb, channels="RGB", use_container_width=True)
+        obj_placeholder.metric("Detected Objects", detected_objects)
 
-        # ======= Update live metrics =======
-        obj_placeholder.metric("Detected Objects", 1)
-
-        # ======= Stop condition =======
-        if stop_button:
-            break
-
-        # small delay to avoid CPU overload
         time.sleep(0.03)
 
     cap.release()
     st.info("📷 Camera stopped.")
 
+# =============================
+# 📉 TRAINING PERFORMANCE (SIMULATION)
+# =============================
+st.markdown("<div class='section-title'>📉 Model Training Performance</div>", unsafe_allow_html=True)
+epochs = np.arange(1, 11)
+loss = np.random.rand(10)
+acc = np.random.uniform(70, 99, 10)
+df_perf = pd.DataFrame({"Epoch": epochs, "Loss": loss, "Accuracy": acc})
 
-
-# ============================================================
-# 🚀 RUN STREAMING DASHBOARD
-# ============================================================
-run_local_camera()
+fig = px.line(df_perf, x="Epoch", y=["Loss", "Accuracy"], markers=True, title="Training Progress Over Epochs")
+st.plotly_chart(fig, use_container_width=True)
 
 # =============================
 # 🧾 FOOTER

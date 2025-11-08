@@ -1,56 +1,40 @@
-import { useEffect, useState } from "react";
-import { streamSocket, alertSocket } from "./services/socket";
+// src/services/api.js
+const API_BASE = "http://127.0.0.1:8000/api/zones"; // adjust if your backend runs elsewhere
 
-function App() {
-  const [frame, setFrame] = useState(null);
-  const [detections, setDetections] = useState([]);
-  const [alert, setAlert] = useState(null);
-
-  useEffect(() => {
-    streamSocket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.frame) setFrame(data.frame);
-      if (data.detections) setDetections(data.detections);
-    };
-
-    alertSocket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      setAlert(data);
-    };
-
-    return () => {
-      streamSocket.close();
-      alertSocket.close();
-    };
-  }, []);
-
-  return (
-    <div style={{ textAlign: "center", marginTop: "30px" }}>
-      <h1>🎯 SentinelAI — Live Video Stream</h1>
-
-      {frame ? (
-        <img
-          src={`data:image/jpeg;base64,${frame}`}
-          alt="Live Stream"
-          style={{ width: "70%", borderRadius: "10px", boxShadow: "0 0 15px rgba(0,0,0,0.3)" }}
-        />
-      ) : (
-        <p>Waiting for live video feed...</p>
-      )}
-
-      {detections.length > 0 && (
-        <p style={{ color: "green" }}>
-          ✅ Objects detected: {detections.join(", ")}
-        </p>
-      )}
-
-      {alert && (
-        <p style={{ color: "red", fontWeight: "bold" }}>
-          🚨 Alert: {alert.message || "Suspicious activity detected!"}
-        </p>
-      )}
-    </div>
-  );
+// Fetch all zones
+export async function getZones() {
+  const res = await fetch(`${API_BASE}/zones`);
+  if (!res.ok) throw new Error("Failed to fetch zones");
+  return await res.json();
 }
 
-export default App;
+// Create a new zone
+export async function createZone(zone) {
+  const res = await fetch(`${API_BASE}/zones`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(zone),
+  });
+  if (!res.ok) throw new Error("Failed to create zone");
+  return await res.json();
+}
+
+// Update an existing zone
+export async function updateZone(id, data) {
+  const res = await fetch(`${API_BASE}/zones/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to update zone");
+  return await res.json();
+}
+
+// Delete a zone
+export async function deleteZone(id) {
+  const res = await fetch(`${API_BASE}/zones/${id}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error("Failed to delete zone");
+  return await res.json();
+}
