@@ -58,19 +58,67 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 - Anomaly detection in `app/services/detection_service.py`
 - Integration point in `_check_anomalies` method
 
-### Security Considerations
+🧠 Tracking & Zone Management (Member 2)
 
-- CORS is currently set to allow all origins (`*`). In production, specify allowed origins.
-- Implement authentication for WebSocket connections
-- Use SSL/TLS in production
-- Implement rate limiting
+This backend includes a lightweight IoU-based tracker and a polygonal zone manager as starter implementations.
+Member 2 is responsible for reviewing or replacing these with DeepSort or another robust tracker if needed.
 
-### Performance Optimization
+📁 Files Overview
+File	Description
+app/services/tracker.py	Implements a simple IoU tracker that assigns persistent IDs and stores centroid history.
+app/services/zone_manager.py	Provides polygon-based zone management. Use add_zone(id, name, polygon) to register restricted areas.
+⚙️ Example Usage
+from app.services.detection_service import DetectionService
 
-- Frame processing is done asynchronously
-- Implement frame dropping if processing falls behind
-- Use GPU acceleration where available
-- Optimize model inference times
+ds = DetectionService()
+
+# Add or modify zones at runtime
+ds.zone_manager.add_zone(
+    'zone_entrance',
+    'Main Entrance',
+    [(100, 100), (400, 100), (400, 400), (100, 400)]
+)
+
+# Pass YOLO detections directly to process_frame
+sample_detections = [
+    {"bbox": (120, 130, 50, 100), "class": "person", "confidence": 0.92},
+]
+
+result = await ds.process_frame("", detections=sample_detections)
+print(result)  # returns a dict with 'tracks' and 'anomalies'
+
+🧩 Notes
+
+Zone violations are detected by checking if a bounding box centroid lies inside any registered polygon.
+
+Detected violations enqueue a zone_violation alert into the backend alert queue.
+
+To replace the default IoU tracker with DeepSort, implement a wrapper exposing the same interface:
+
+update(detections) -> list of tracks
+
+
+Then integrate it into DetectionService.tracker.
+
+🔒 Security Considerations
+
+CORS currently allows all origins (*); restrict it in production.
+
+Implement authentication for WebSocket connections.
+
+Use SSL/TLS for all production deployments.
+
+Add rate limiting to protect against abuse.
+
+⚡ Performance Optimization
+
+Frame processing is asynchronous.
+
+Implement frame dropping when processing falls behind.
+
+Utilize GPU acceleration where available.
+
+Optimize model inference for faster performance.
 
 ## Anomaly Detection Module (Member 3)
 
