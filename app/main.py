@@ -1,13 +1,9 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from app.services.connection_manager import ConnectionManager
-from app.services.detection_service import DetectionService
-<<<<<<< HEAD
 import asyncio
-=======
 from app.models.detection import Detection, Alert
 from app.api.zones import router as zones_router
->>>>>>> 1aae5ae8accadd37937e33ae75d59dc057e08560
+from app.core import connection_manager, detection_service
 
 app = FastAPI(title="Sentinel AI Backend")
 
@@ -19,10 +15,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Initialize services
-connection_manager = ConnectionManager()
-detection_service = DetectionService()
 
 # include API router for zones
 app.include_router(zones_router, prefix="/api")
