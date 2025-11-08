@@ -1,7 +1,11 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Tuple
+<<<<<<< HEAD
 
+=======
+from app.core import detection_service
+>>>>>>> 6196de6dec23bb873a6d00cd8be7d35b9d35a0a5
 
 router = APIRouter()
 
