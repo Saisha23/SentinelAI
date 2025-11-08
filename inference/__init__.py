@@ -1,12 +1,6 @@
+# app/__init__.py
 """
-Inference package initialization
+App package initialization for SentinelAI Backend
 """
 
-from .detector import AnomalyDetector
-from .integration import BackendIntegration, StreamCallback
-
-__all__ = [
-    'AnomalyDetector',
-    'BackendIntegration',
-    'StreamCallback'
-]
+# Nothing to import here — this file just marks 'app' as a Python package.

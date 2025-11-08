@@ -1,73 +1,94 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import time
-from PIL import Image
 import plotly.express as px
+import asyncio
+import websockets
+import json
+import cv2
+import base64
+from PIL import Image
+import threading
 
-# --- Page Config ---
 st.set_page_config(
     page_title="SentinelAI Command Center",
     layout="wide",
     page_icon="🛰️"
 )
 
-# --- Header ---
 st.markdown("<h1 style='text-align:center; color:#00B4D8;'>🛰️ SentinelAI Command Center</h1>", unsafe_allow_html=True)
 st.markdown("---")
 
-# --- Sidebar ---
-st.sidebar.header("📋 Alert Controls")
-st.sidebar.write("Filter and monitor active alerts in real time.")
+# Sidebar
+st.sidebar.header("📋 Live Alerts")
+st.sidebar.write("Monitoring live alerts from FastAPI backend...")
 
-alert_filter = st.sidebar.selectbox(
-    "Select Alert Type:",
-    ["All", "Weapon", "Intrusion", "Anomaly", "Suspicious Crowd"]
-)
-st.sidebar.markdown("### Alert Logs")
-dummy_alerts = pd.DataFrame({
-    "Time": ["12:00", "12:05", "12:10"],
-    "Type": ["Weapon", "Intrusion", "Anomaly"],
-    "Confidence": [0.91, 0.84, 0.76]
-})
-st.sidebar.dataframe(dummy_alerts, use_container_width=True)
+alert_placeholder = st.sidebar.empty()
+log_data = []
 
-# --- Layout: Main Columns ---
-col1, col2 = st.columns([2, 1])
+# Live feed placeholder
+st.subheader("🎥 Live Surveillance Feed")
+video_placeholder = st.empty()
 
-# --- Live Feed Placeholder ---
-with col1:
-    st.subheader("🎥 Live Surveillance Feed")
-    placeholder_image = Image.open("assets/demo_feed.jpg")
-    st.image(placeholder_image, caption="Simulated NSG Camera Feed", use_column_width=True)
+# Metrics
+col1, col2, col3 = st.columns(3)
+cam_metric = col1.metric("Active Cameras", 1)
+obj_metric = col2.metric("Detected Objects", 0)
+alert_metric = col3.metric("Alerts Triggered", 0)
 
-# --- Stats Panel ---
-with col2:
-    st.subheader("📊 System Status")
-    st.metric("Active Cameras", 4)
-    st.metric("Detected Objects", 12)
-    st.metric("Alerts Triggered", 3)
-    st.metric("Average FPS", "14.6")
-    st.metric("Latency", "1.9s")
+# Globals for live data
+latest_frame = None
+latest_alert = None
 
-# --- Tabs for Analytics & Heatmaps ---
-tab1, tab2 = st.tabs(["Heatmap View", "Alert Analytics"])
+# --- Function to decode base64 frames ---
+def decode_frame(base64_str):
+    frame_bytes = base64.b64decode(base64_str)
+    np_arr = np.frombuffer(frame_bytes, np.uint8)
+    return cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-with tab1:
-    st.write("🗺️ Placeholder for Heatmap visualization.")
-    heat_data = pd.DataFrame(np.random.randn(50, 2), columns=["x", "y"])
-    fig = px.density_heatmap(heat_data, x="x", y="y", nbinsx=20, nbinsy=20, color_continuous_scale="blues")
-    st.plotly_chart(fig, use_container_width=True)
+# --- WebSocket Listener for /ws/stream ---
+async def listen_stream():
+    uri = "ws://localhost:8000/ws/stream"
+    async with websockets.connect(uri) as websocket:
+        while True:
+            data = await websocket.recv()
+            results = json.loads(data)
+            
+            # Assuming backend sends {'frame': base64_str, 'detections': [...]} format
+            if 'frame' in results:
+                frame = decode_frame(results['frame'])
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                video_placeholder.image(frame_rgb, channels="RGB", use_container_width=True)
 
-with tab2:
-    st.write("📈 Alert trends and distribution over time.")
-    alert_counts = pd.DataFrame({
-        "Alert Type": ["Weapon", "Intrusion", "Anomaly"],
-        "Count": [5, 3, 2]
-    })
-    fig2 = px.bar(alert_counts, x="Alert Type", y="Count", color="Alert Type", title="Alerts Summary")
-    st.plotly_chart(fig2, use_container_width=True)
+            if 'detections' in results:
+                obj_metric.metric("Detected Objects", len(results['detections']))
 
-# --- Footer ---
-st.markdown("---")
-st.markdown("<p style='text-align:center; color:grey;'>© 2025 SentinelAI – Data Dynamos Hack-O-Octo 3.0</p>", unsafe_allow_html=True)
+# --- WebSocket Listener for /ws/alerts ---
+async def listen_alerts():
+    uri = "ws://localhost:8000/ws/alerts"
+    async with websockets.connect(uri) as websocket:
+        while True:
+            data = await websocket.recv()
+            alert = json.loads(data)
+            
+            # Example alert: {'type': 'Weapon', 'confidence': 0.91, 'zone': 'Restricted Area'}
+            log_data.insert(0, alert)
+            if len(log_data) > 10:
+                log_data.pop()
+            
+            alert_df = pd.DataFrame(log_data)
+            alert_placeholder.dataframe(alert_df, use_container_width=True)
+            alert_metric.metric("Alerts Triggered", len(log_data))
+
+# --- Run both connections in parallel ---
+def start_async_loops():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    tasks = [
+        loop.create_task(listen_stream()),
+        loop.create_task(listen_alerts())
+    ]
+    loop.run_until_complete(asyncio.wait(tasks))
+
+# Start the threads
+threading.Thread(target=start_async_loops, daemon=True).start()
