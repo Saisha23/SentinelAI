@@ -1,94 +1,149 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.express as px
-import asyncio
-import websockets
-import json
 import cv2
 import base64
-from PIL import Image
-import threading
 
+# =============================
+# 🌐 STREAMLIT PAGE SETUP
+# =============================
 st.set_page_config(
     page_title="SentinelAI Command Center",
     layout="wide",
     page_icon="🛰️"
 )
 
-st.markdown("<h1 style='text-align:center; color:#00B4D8;'>🛰️ SentinelAI Command Center</h1>", unsafe_allow_html=True)
+# =============================
+# 💅 CUSTOM STYLES
+# =============================
+st.markdown("""
+    <style>
+        .main-title {
+            text-align: center;
+            font-size: 42px;
+            font-weight: 700;
+            color: #00B4D8;
+            text-shadow: 0px 0px 12px rgba(0, 180, 216, 0.9);
+            letter-spacing: 1px;
+        }
+        [data-testid="stSidebar"] {
+            background-color: #0f1117 !important;
+            border-right: 1px solid #00B4D8;
+        }
+        div[data-testid="stMetricValue"] {
+            color: #00B4D8 !important;
+            font-size: 28px !important;
+        }
+        div[data-testid="stMetricLabel"] {
+            color: #ccc !important;
+            font-size: 15px !important;
+        }
+        .section-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: white;
+            border-left: 5px solid #00B4D8;
+            padding-left: 12px;
+            margin-top: 25px;
+        }
+        img {
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0,180,216,0.3);
+        }
+        .footer {
+            text-align: center;
+            color: #777;
+            margin-top: 40px;
+            font-size: 13px;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# =============================
+# 🛰️ TITLE
+# =============================
+st.markdown("<h1 class='main-title'>🛰️ SentinelAI Command Center</h1>", unsafe_allow_html=True)
 st.markdown("---")
 
-# Sidebar
+# =============================
+# 📋 SIDEBAR - ALERTS
+# =============================
 st.sidebar.header("📋 Live Alerts")
-st.sidebar.write("Monitoring live alerts from FastAPI backend...")
-
+st.sidebar.write("Monitoring live alerts (simulation mode)...")
 alert_placeholder = st.sidebar.empty()
-log_data = []
 
-# Live feed placeholder
-st.subheader("🎥 Live Surveillance Feed")
-video_placeholder = st.empty()
+# =============================
+# 🎥 LIVE FEED SECTION
+# =============================
+st.markdown("<div class='section-title'>🎥 Live Surveillance Feed</div>", unsafe_allow_html=True)
+frame_window = st.empty()
 
-# Metrics
+# =============================
+# 📊 METRICS
+# =============================
 col1, col2, col3 = st.columns(3)
-cam_metric = col1.metric("Active Cameras", 1)
-obj_metric = col2.metric("Detected Objects", 0)
-alert_metric = col3.metric("Alerts Triggered", 0)
+col1.metric("Active Cameras", 1)
+col2.metric("Detected Objects", 0)
+col3.metric("Alerts Triggered", 0)
 
-# Globals for live data
-latest_frame = None
-latest_alert = None
+# ============================================================
+# 🎥 LOCAL CAMERA DISPLAY LOOP (NO BACKEND)
+# ============================================================
+import time
 
-# --- Function to decode base64 frames ---
-def decode_frame(base64_str):
-    frame_bytes = base64.b64decode(base64_str)
-    np_arr = np.frombuffer(frame_bytes, np.uint8)
-    return cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+def run_local_camera():
+    st.markdown("<div class='section-title'>🎥 Live Local Camera Feed</div>", unsafe_allow_html=True)
 
-# --- WebSocket Listener for /ws/stream ---
-async def listen_stream():
-    uri = "ws://localhost:8000/ws/stream"
-    async with websockets.connect(uri) as websocket:
-        while True:
-            data = await websocket.recv()
-            results = json.loads(data)
-            
-            # Assuming backend sends {'frame': base64_str, 'detections': [...]} format
-            if 'frame' in results:
-                frame = decode_frame(results['frame'])
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                video_placeholder.image(frame_rgb, channels="RGB", use_container_width=True)
+    frame_placeholder = st.empty()
+    obj_placeholder = st.empty()
 
-            if 'detections' in results:
-                obj_metric.metric("Detected Objects", len(results['detections']))
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    if not cap.isOpened():
+        st.error("❌ Could not access webcam.")
+        return
 
-# --- WebSocket Listener for /ws/alerts ---
-async def listen_alerts():
-    uri = "ws://localhost:8000/ws/alerts"
-    async with websockets.connect(uri) as websocket:
-        while True:
-            data = await websocket.recv()
-            alert = json.loads(data)
-            
-            # Example alert: {'type': 'Weapon', 'confidence': 0.91, 'zone': 'Restricted Area'}
-            log_data.insert(0, alert)
-            if len(log_data) > 10:
-                log_data.pop()
-            
-            alert_df = pd.DataFrame(log_data)
-            alert_placeholder.dataframe(alert_df, use_container_width=True)
-            alert_metric.metric("Alerts Triggered", len(log_data))
+    st.success("✅ Live camera started. Press 'Stop Camera' to end.")
 
-# --- Run both connections in parallel ---
-def start_async_loops():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    tasks = [
-        loop.create_task(listen_stream()),
-        loop.create_task(listen_alerts())
-    ]
-    loop.run_until_complete(asyncio.wait(tasks))
+    stop_button = st.button("🛑 Stop Camera")
 
-# Start the threads
-threading.Thread(target=start_async_loops, daemon=True).start()
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            st.warning("⚠️ Frame not captured.")
+            break
+
+        # ======= Simulate object detection (for now) =======
+        # (Replace this with your backend or AI model later)
+        height, width, _ = frame.shape
+        x, y, w, h = 100, 120, 180, 180
+        cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+        cv2.putText(frame, "Person: 98%", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,0), 2)
+
+        # ======= Display live frame =======
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame_placeholder.image(frame_rgb, channels="RGB", use_container_width=True)
+
+        # ======= Update live metrics =======
+        obj_placeholder.metric("Detected Objects", 1)
+
+        # ======= Stop condition =======
+        if stop_button:
+            break
+
+        # small delay to avoid CPU overload
+        time.sleep(0.03)
+
+    cap.release()
+    st.info("📷 Camera stopped.")
+
+
+
+# ============================================================
+# 🚀 RUN STREAMING DASHBOARD
+# ============================================================
+run_local_camera()
+
+# =============================
+# 🧾 FOOTER
+# =============================
+st.markdown("<div class='footer'>© 2025 SentinelAI | Designed by Data Dynamos</div>", unsafe_allow_html=True)

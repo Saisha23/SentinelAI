@@ -2,54 +2,36 @@ import cv2
 import base64
 import asyncio
 import numpy as np
-import random
-from datetime import datetime
 
 class DetectionService:
     def __init__(self):
-        # Open webcam
-        self.cap = cv2.VideoCapture(0)
+        self.cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
         if not self.cap.isOpened():
-            raise Exception("Could not open webcam")
-
-        # Dummy labels
-        self.labels = ["person", "car", "dog", "bicycle"]
+            raise Exception("❌ Could not access webcam")
 
     async def process_frame(self, data=None):
-        """Capture a frame, simulate detections, and return encoded image."""
+        """Capture and send webcam frame in base64"""
         ret, frame = self.cap.read()
         if not ret:
-            return {"error": "Failed to capture frame"}
+            return {"error": "Frame not captured"}
 
-        # Resize frame for consistent performance
+        # Resize to avoid lag
         frame = cv2.resize(frame, (640, 480))
 
-        detections = []
-        # Generate 1–3 fake objects
-        for _ in range(random.randint(1, 3)):
-            x = random.randint(50, 400)
-            y = random.randint(50, 300)
-            w = random.randint(50, 120)
-            h = random.randint(50, 120)
-            label = random.choice(self.labels)
-            detections.append({
-                "bbox": [x, y, w, h],
-                "label": label,
-                "confidence": round(random.uniform(0.5, 0.99), 2)
-            })
+        # Draw bounding boxes (temporary simulation)
+        cv2.putText(frame, "Live Camera Feed", (20, 40),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 200, 255), 2)
 
-        # Encode frame for streaming (if needed)
+        # Encode as base64
         _, buffer = cv2.imencode('.jpg', frame)
         encoded_image = base64.b64encode(buffer).decode('utf-8')
 
+        # Send detections (currently dummy)
         return {
             "frame": encoded_image,
-            "detections": detections
+            "detections": []
         }
 
     async def get_alerts(self):
-        """Simulate random alerts."""
-        await asyncio.sleep(random.uniform(3, 7))
-        if random.random() > 0.7:
-            return {"message": f"⚠️ Suspicious movement detected at {datetime.now().strftime('%H:%M:%S')}"}
-        return {"message": "No threats detected"}
+        await asyncio.sleep(5)
+        return {"message": "✅ Camera feed running smoothly"}
