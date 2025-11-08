@@ -193,3 +193,20 @@ anomaly_score = detector.detect(video_frames)
 - Day 5-6: Add CNN-LSTM for temporal analysis
 - Day 7: Integrate anomaly score output
 - Day 8: Deliver final model
+
+## Integrated Violence Detection (Third-Party)
+
+We have integrated the reference implementation of the paper "Efficient Two-Stream Network for Violence Detection Using Separable Convolutional LSTM" (IJCNN 2021) as a third-party module for research and benchmarking.
+
+- Source: https://github.com/zahid58/TwoStreamSepConvLSTM_ViolenceDetection
+- Path in this repo: `third_party/TwoStreamSepConvLSTM_ViolenceDetection`
+- License: MIT (original copyright © 2021 Zahidul Islam). The original license file is included in `third_party/TwoStreamSepConvLSTM_ViolenceDetection/license`.
+
+### Quick start (research use)
+- Install its dependencies:
+    - From the project root: `pip install -r third_party/TwoStreamSepConvLSTM_ViolenceDetection/requirements.txt`
+- Run training/evaluation from inside the third-party folder or adapt paths as needed (see its `README.md`).
+
+### Notes
+- This code is included for evaluation and potential integration with our anomaly pipeline. It is not actively maintained by this project. Refer to the upstream repository for original documentation and updates.
+
